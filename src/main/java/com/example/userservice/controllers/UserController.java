@@ -1,8 +1,12 @@
 package com.example.userservice.controllers;
 
+import com.example.userservice.dtos.LoginRequestDTO;
+import com.example.userservice.dtos.LoginResponseDTO;
+import com.example.userservice.dtos.LogoutRequestDTO;
 import com.example.userservice.dtos.ResponseStatus;
 import com.example.userservice.dtos.SignUpRequestDTO;
 import com.example.userservice.dtos.SignUpResponseDTO;
+import com.example.userservice.models.Token;
 import com.example.userservice.models.User;
 import com.example.userservice.services.UserService;
 import org.springframework.http.HttpStatus;
@@ -56,5 +60,31 @@ public class UserController {
             signUpResponseDTO.setResponseStatus(ResponseStatus.FAILURE);
             return signUpResponseDTO;
         }
+    }
+
+    /*@PostMapping("/login")
+    public String *//*Token*//* login(@RequestBody  LoginRequestDTO loginRequestDTO){
+        return userService.login(loginRequestDTO.getEmail(), loginRequestDTO.getPassword()).getTokenValue();
+    }*/
+    @PostMapping("/login")
+    public LoginResponseDTO login (@RequestBody LoginRequestDTO loginRequestDTO){
+        LoginResponseDTO loginResponseDTO = new LoginResponseDTO();
+
+        try {
+            Token token = userService.login(loginRequestDTO.getEmail(), loginRequestDTO.getPassword());
+            loginResponseDTO.setEmail(token.getUser().getEmail());
+            loginResponseDTO.setExpiryAt(token.getExpiryAt());
+            loginResponseDTO.setTokenValue(token.getTokenValue());
+            loginResponseDTO.setResponseStatus(ResponseStatus.SUCCESS);
+        }catch (Exception ex){
+            loginResponseDTO.setResponseStatus(ResponseStatus.FAILURE);
+        }
+        return loginResponseDTO;
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout (@RequestBody LogoutRequestDTO logoutRequestDTO){
+        userService.logout(logoutRequestDTO.getTokenValue());
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

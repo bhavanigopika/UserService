@@ -1,5 +1,6 @@
 package com.example.userservice.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,12 +17,12 @@ public class BaseModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private boolean isDeleted; //initially, it is false
+    private boolean deleted; //initially, it is false
 
 }
 
 /*
-When someone log out from the system, then token has expired - token will be invalidated
+When someone logout from the system, then token has expired - token will be invalidated
 Token table -> value, user, expiryAt
 Once token has expired, then remove that row from the table – so that, when someone trying to find that particular token, it will not present in the table. So that we will say token has expired
 
