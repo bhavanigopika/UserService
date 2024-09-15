@@ -6,11 +6,14 @@ import com.example.userservice.dtos.LogoutRequestDTO;
 import com.example.userservice.dtos.ResponseStatus;
 import com.example.userservice.dtos.SignUpRequestDTO;
 import com.example.userservice.dtos.SignUpResponseDTO;
+import com.example.userservice.dtos.UserDTO;
 import com.example.userservice.models.Token;
 import com.example.userservice.models.User;
 import com.example.userservice.services.UserService;
+import lombok.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -86,5 +89,11 @@ public class UserController {
     public ResponseEntity<Void> logout (@RequestBody LogoutRequestDTO logoutRequestDTO){
         userService.logout(logoutRequestDTO.getTokenValue());
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/validate/{tokenValue}")//(i.e) http://localhost:8080/users/validate/ujhj8o23i3i4jkjk23j43k25jh
+    public UserDTO validateToken(@PathVariable("tokenValue") @NonNull String tokenValue){
+        return UserDTO.from(userService.validateToken(tokenValue));
+
     }
 }

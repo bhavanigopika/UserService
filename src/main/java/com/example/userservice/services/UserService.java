@@ -1,10 +1,15 @@
 package com.example.userservice.services;
 
+//import com.example.userservice.dtos.SendEmailDTO;
+import com.example.userservice.dtos.SendEmailDTO;
 import com.example.userservice.models.Token;
 import com.example.userservice.models.User;
 import com.example.userservice.repositories.TokenRepository;
 import com.example.userservice.repositories.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,20 +27,43 @@ public class UserService {
     private BCryptPasswordEncoder bCryptPasswordEncoder;
     private UserRepository userRepository;
     private TokenRepository tokenRepository;
+    private KafkaTemplate<String, String> kafkaTemplate;//accept key-value pair
+    private ObjectMapper objectMapper;
+    /*private static final String SECRET_KEY = "dfsf342gg4fgd34fg34433ffdgbh";*/
+
 
     //Add the dependency of bCryptPasswordEncoder, so create the method of BCryptPasswordEncoder in the BCryptConfiguration class.
-    public UserService(BCryptPasswordEncoder bCryptPasswordEncoder, UserRepository userRepository, TokenRepository tokenRepository) {
+    public UserService(BCryptPasswordEncoder bCryptPasswordEncoder,
+                       UserRepository userRepository,
+                       TokenRepository tokenRepository,
+                       KafkaTemplate<String, String> kafkaTemplate,
+                       ObjectMapper objectMapper) {
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
     }
-    public User signUp(String fullName, String email, String password){
+    public User signUp(String fullName, String email, String password) throws JsonProcessingException {
         User user = new User();
         user.setName(fullName);
         user.setEmail(email);
         user.setHashedPassword(bCryptPasswordEncoder.encode(password));
         userRepository.save(user);
+        /*
+        After signup, I want to publish this event to the message queue  We are going to use the Kafka message queue
+         */
+        SendEmailDTO sendEmailDto = new SendEmailDTO();
+        sendEmailDto.setFrom("krishengineerxyz@gmail.com");
+        sendEmailDto.setTo("vidhuengineerxyz@gmail.com");
+        sendEmailDto.setSubject("Welcome to Scaler");
+        sendEmailDto.setBody("Welcome, we are very happy and excited to welcome you in the platform");
+
+        //kafkaTemplate.send(event_category(topic), actual request(which have all the details of what we used during sending emails))
+        kafkaTemplate.send("send_Email", objectMapper.writeValueAsString(sendEmailDto));
         return user;
+
+        //kafka queue - [{send_Email, {"to" : "" , from : "" , "body}]
 
     }
 
@@ -80,7 +108,16 @@ public class UserService {
 
         //set the token value
         //JWT -> A, B, C -> https://github.com/jwtk/jjwt -> see below
-        //But, let set the random token value here
+       /*String jwtToken = Jwts.builder()
+                .setSubject("user@example.com")
+                .claim("role", "admin")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 3600000)) // 1 hour expiration
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY.getBytes())
+                .compact();
+        token.setTokenValue(jwtToken);*/
+
+        //But, now let set the random token value here
         token.setTokenValue(RandomStringUtils.randomAlphanumeric(128));
 
         //finally save the token in database
@@ -89,6 +126,8 @@ public class UserService {
     }
 
     public void logout(String tokenValue){
+        //For logout, the tokenValue should delete
+        //Here, first check the conditon, whether the tokenValue is false(i.e) token is valid
         Optional<Token> optionalToken = tokenRepository.findByTokenValueAndDeletedEquals(tokenValue, false);
 
         if(optionalToken.isEmpty()){
@@ -103,5 +142,26 @@ public class UserService {
         return;
 
     }
+
+    /*public UserDTO validateToken(String tokenValue) {
+    }*/
+
+    //To validate the token, from service, it completely sends the user, but controller,
+    // it response back to the client as UserDTO...So, in UserDTO we write some conditons
+    public User validateToken(String tokenValue){
+        //Goal: Check in the database, whether the tokenValue is exist, deleted = true (still token is valid), expiryTime is not after 30 days(take currentDate (i.e) new Date())
+        Optional<Token> optionalToken = tokenRepository.findByTokenValueAndDeletedEqualsAndExpiryAtGreaterThan(tokenValue, false, new Date());
+
+        if(optionalToken.isEmpty()){
+            //token is invalid
+            return null;
+        }
+        Token token = optionalToken.get();//Get the token
+        User user = token.getUser();//get the user from token(which is valid user)
+        return user;
+
+
+    }
+
 
 }
