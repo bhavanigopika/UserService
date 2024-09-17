@@ -2,6 +2,7 @@ package com.example.userservice.services;
 
 //import com.example.userservice.dtos.SendEmailDTO;
 import com.example.userservice.dtos.SendEmailDTO;
+import com.example.userservice.dtos.UserDTO;
 import com.example.userservice.models.Token;
 import com.example.userservice.models.User;
 import com.example.userservice.repositories.TokenRepository;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -159,9 +161,15 @@ public class UserService {
         Token token = optionalToken.get();//Get the token
         User user = token.getUser();//get the user from token(which is valid user)
         return user;
-
-
     }
 
+    public User getUserDetails(Long userId){
+        //User might or might not present, so use Optional<User>
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if(optionalUser.isEmpty()){
+            throw new RuntimeException("User with userId + " + userId + " not present");
+        }
+        return optionalUser.get();
 
+    }
 }
